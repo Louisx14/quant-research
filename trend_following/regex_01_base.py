@@ -1,19 +1,21 @@
-# in this file we might start actually working onnstrategy research and testing.
+"""
+REGEX on hourly candles — base version (Feb 2026).
 
-import re
-import time
-import math
+Adds one OLS slope column per lookback in PARAMETERS to the candle frame
+(`regex_df`), a volume-weighted variant (`weighted_regex_df`), the
+exp(n/70)-weighted signal (`add_ave_column`), a long-lookback "bias"
+regression (`add_bias`) and plots the signal line coloured by whether signal
+and bias agree. `weighted_vs_unweighted_spread` produces the histogram of
+weighted / unweighted signal ratios discussed in the journal (18 Feb 2026).
+
+Original file: REGEX_001.py (a copy of WS_009.py)
+"""
+
 import sqlite3
-import pyautogui
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from selenium import webdriver
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver 
-from selenium.webdriver.common.action_chains import ActionChains
 
 
 URL = "https://www.binance.com/en/trade/SOL_USDC"
@@ -22,8 +24,8 @@ DATABASE = "crypto.db"
 TABLENAME = "solana1H"
 PARAMETERS = [15, 25, 34, 43, 52, 61, 70, 75, 80]
 OFFSET = 100
-LENGHT = 2000
-BIAS_LENGHT = 400
+LENGTH = 2000
+BIAS_LENGTH = 400
 
 collst = [
     "#ff0000",
@@ -45,7 +47,7 @@ df = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
 
-def regexdf(df, params):
+def regex_df(df, params):
     close_prices = df.iloc[:, 5]
 
     for window in params:
@@ -59,7 +61,7 @@ def regexdf(df, params):
 
     return df
 
-def plotx(df, sh=False):
+def plot_candles(df, sh=False):
 
     # Extract columns (change names if needed to match your DB schema)
     open_ = df.iloc[:, 2].astype(float)
@@ -94,7 +96,7 @@ def plotx(df, sh=False):
     if sh:
         plt.show()     
 
-def wregexdf(df, params):
+def weighted_regex_df(df, params):
     close_prices = df.iloc[:, 5].astype(float)
     weights = df.iloc[:, 6].astype(float)
 
@@ -143,47 +145,47 @@ def add_ave_column(df, params=PARAMETERS, factor=70, weighted=True, mode='xp', c
 
     return df
 
-def add_bias(df, lnght = BIAS_LENGHT, weighted=True) :
+def add_bias(df, length = BIAS_LENGTH, weighted=True) :
     close_prices  = df.iloc[:, 5]
     volumes = df.iloc[:, 6]
     
-    x = np.arange(lnght)
+    x = np.arange(length)
 
     def weighted_slope(y):
         w = volumes.loc[y.index].values
         return np.polyfit(x, y.values, 1, w=w)[0]
 
     if weighted == True :
-        df[f"bias_{lnght}"] = (
+        df[f"bias_{length}"] = (
             close_prices
-            .rolling(lnght)
+            .rolling(length)
             .apply(weighted_slope, raw=False)
             .round(8)) 
     else :
-        df[f"bias_{lnght}"] = (
+        df[f"bias_{length}"] = (
             close_prices
-            .rolling(lnght)
+            .rolling(length)
             .apply(lambda y: np.polyfit(x, y, 1)[0], raw=True)) 
         
     return df
 
-def plot_sigbias_conv(df, mint = 0, biasl = BIAS_LENGHT) :
+def plot_sigbias_conv(df, start_index = 0, bias_length = BIAS_LENGTH) :
     x = [p for p in range(len(df))]
     for i in range(len(df)) :
-        if df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGHT}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] > 0 :
-            plt.plot(x[i], mint, 'o', color='green')
-        elif df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGHT}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] < 0 :
-            plt.plot(x[i], mint, 'o', color='red')
+        if df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGTH}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] > 0 :
+            plt.plot(x[i], start_index, 'o', color='green')
+        elif df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGTH}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] < 0 :
+            plt.plot(x[i], start_index, 'o', color='red')
 
-def wnw_diff_spread(df) :
+def weighted_vs_unweighted_spread(df) :
 
 
 
     df['spread_diff'] = df['sig']/df['wsig']
     return df
 
-#df = regexdf(df, PARAMETERS)
-df = wregexdf(df, PARAMETERS)
+#df = regex_df(df, PARAMETERS)
+df = weighted_regex_df(df, PARAMETERS)
 df = add_ave_column(
     df,
     params = PARAMETERS,
@@ -192,7 +194,7 @@ df = add_ave_column(
     mode = 'xp',
     colname = 'wsig'
     )
-df = regexdf(df, PARAMETERS)
+df = regex_df(df, PARAMETERS)
 df = add_ave_column(
     df,
     params = PARAMETERS,
@@ -202,9 +204,9 @@ df = add_ave_column(
     colname = 'sig'
     )
 df = add_bias(df)
-df = df.iloc[OFFSET:OFFSET+LENGHT]
+df = df.iloc[OFFSET:OFFSET+LENGTH]
 
-df = wnw_diff_spread(df)
+df = weighted_vs_unweighted_spread(df)
 
 plt.hist(df['spread_diff'], bins=50, range=(-1.5, 3))
 plt.show()
@@ -212,7 +214,7 @@ plt.show()
 print(df)
 
 #plot_ave_func(rows)
-plotx(df, sh=False)
-plot_sigbias_conv(df, mint=120)
+plot_candles(df, sh=False)
+plot_sigbias_conv(df, start_index=120)
 
 plt.show()

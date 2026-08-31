@@ -1,3 +1,9 @@
+"""
+SKCDE with and without fees — expected value per trade across the stop grid (May 2026).
+
+Original file: SKCDE_002(with fee comparaison).py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -30,7 +36,7 @@ df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
 
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
+def compute_coming_vol(foresight=48, df=None, colname="coming_vol"):
     df = df.copy()
     colname_bearish = f"{colname}_br"
     colname_bullish = f"{colname}_bu"
@@ -146,7 +152,7 @@ def simulate_sl_sweep(samples, sl_values, fee=0.0):
 # === RUN ====================================================
 # ============================================================
 
-df_dist = comp_comingvol(foresight=FORESIGHT, df=df_raw)
+df_dist = compute_coming_vol(foresight=FORESIGHT, df=df_raw)
 
 samples = sample_conditional_binned(
     df_dist, n_rows=n, n_bins=N_BINS, p_bullish=P_BULLISH, seed=SEED

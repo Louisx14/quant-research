@@ -1,3 +1,16 @@
+"""
+Empirical SL/TP grid test on the real sample (Jun 2026).
+
+Replays a stop-loss / take-profit grid directly on the candle table rather
+than on SKCDE draws, tracking the realised path, so the conditional-sampling
+results can be compared with what the actual sample pays.
+
+RUNTIME: replays the full grid on every candle — several minutes on the full
+hourly table.
+
+Original file: empirical_test_across_vars.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

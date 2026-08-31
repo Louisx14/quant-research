@@ -1,3 +1,15 @@
+"""
+SKCDE — smoothed kernel conditional density estimation of stop/target outcomes (May 2026).
+
+Bins the bullish excursion x1 of a window, builds the empirical distribution
+of the bearish excursion x2 conditional on each bin, and draws (x1, x2)
+pairs from those conditional distributions to evaluate a grid of stop-loss
+levels: what a "purely random" market with the observed excursion structure
+pays for each stop. Base version, no fees.
+
+Original file: SKCDE_001.py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -29,7 +41,7 @@ df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
 
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
+def compute_coming_vol(foresight=48, df=None, colname="coming_vol"):
     df = df.copy()
     colname_bearish = f"{colname}_br"
     colname_bullish = f"{colname}_bu"
@@ -149,7 +161,7 @@ def simulate_sl_sweep(samples, sl_values):
 # ============================================================
 
 # 1. Build empirical distribution
-df_dist = comp_comingvol(foresight=FORESIGHT, df=df_raw)
+df_dist = compute_coming_vol(foresight=FORESIGHT, df=df_raw)
 
 # 2. Draw the sample table ONCE
 samples = sample_conditional_binned(

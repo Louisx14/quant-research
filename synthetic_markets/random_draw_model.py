@@ -1,3 +1,11 @@
+"""
+Random-draw market model: excursions sampled independently from the
+empirical bullish / bearish distributions (the naive model the conditional
+SKCDE sampling replaced, kept as the baseline).
+
+Original file: random_draw_model_001.py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -13,7 +21,7 @@ df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
 
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
+def compute_coming_vol(foresight=48, df=None, colname="coming_vol"):
     df = df.copy()
     colname_bearish = f"{colname}_br"
     colname_bullish = f"{colname}_bu"
@@ -66,7 +74,7 @@ def sample_empirical(df_dist, n_rows, p_bullish=0.5, seed=None):
 
 
 # --- run ---
-df_dist = comp_comingvol(foresight=48, df=df_raw)
+df_dist = compute_coming_vol(foresight=48, df=df_raw)
 sampled = sample_empirical(df_dist, n_rows=1_000_000, seed=42)
 
 print(sampled.head())

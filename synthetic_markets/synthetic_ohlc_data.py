@@ -1,3 +1,15 @@
+"""
+Block-bootstrap synthetic OHLC series (May 2026).
+
+Stitches random 250-candle blocks of the real log-return sample into a
+series 100x longer, then compares moments and quantiles of real vs synthetic
+returns (they match to a few %). The journal's own caveat applies: a
+strategy evaluated on these paths sees genuinely new data only across block
+boundaries, so they are a null benchmark, not a training set.
+
+Original file: synthetic_OHLCdata.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

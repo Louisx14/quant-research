@@ -1,3 +1,11 @@
+"""
+Extra filters on the convergence signal (Oct–Nov 2025): a rolling SOL-BTC
+correlation column (`corr_coef_columns`) and residual bins (`bin_summary`)
+to see where the convergence effect concentrates.
+
+Original file: COR_004 adding extra filters .py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -6,15 +14,13 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
-from scipy.stats import gaussian_kde
-from scipy.stats import linregress
 
-DB_FILE = "SQL001.db"
+DB_FILE = "data/SQL001.db"
 TABLE1_NAME = "Solana3"
 TABLE2_NAME = 'BTC'
 TABLE3_NAME = 'ETH'
 
-def proccess_dfs(table_name, db_file = DB_FILE):
+def process_dfs(table_name, db_file = DB_FILE):
     conn = sqlite3.connect(db_file)
     df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
     conn.close()
@@ -59,13 +65,13 @@ def synchronise_tables(df1, df2, df3=None):
     
     return df1_trimmed, df2_trimmed
 
-def synchronise_continuous(df1, df2, df3=None, freq='5T'):
+def synchronise_continuous(df1, df2, df3=None, freq='5min'):
     """
     Synchronizes 2 or 3 DataFrames by matching dates and ensuring perfect continuity.
     
     Parameters:
         df1, df2, df3: pandas DataFrames with 'date' column
-        freq: frequency string (default '5T' for 5 minutes)
+        freq: frequency string (default '5min')
     
     Returns:
         Trimmed, continuous DataFrames in the same order
@@ -217,9 +223,9 @@ def plot_converge_with_regression(df):
     print(f"  MAE         : {mae:.5f}")
 
 def plot_convergex():
-    dfsol = proccess_dfs(TABLE1_NAME)
-    dfbtc = proccess_dfs(TABLE2_NAME)
-    dfsol, dfbtc = synchronise_continuous(dfsol, dfbtc, freq='5T')
+    dfsol = process_dfs(TABLE1_NAME)
+    dfbtc = process_dfs(TABLE2_NAME)
+    dfsol, dfbtc = synchronise_continuous(dfsol, dfbtc, freq='5min')
     dfsolc = add_returns(dfsol)
     dfbtcc = add_returns(dfbtc)
     X = dfbtcc['returns'].values
@@ -268,16 +274,16 @@ def corr_coef_columns(df, col1, col2, length):
     df = df.dropna()
     return df
 
-def binshit (df):
+def bin_summary (df):
     values = np.where(df["residuals"] < 0, df["MaxFuture"], df["MinFuture"])
     plt.hist(values, bins=100, edgecolor='black')
     plt.show()
 
 
-dfsol = proccess_dfs(TABLE1_NAME)
-dfbtc = proccess_dfs(TABLE2_NAME)
-dfeth = proccess_dfs(TABLE3_NAME)
-dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5T')
+dfsol = process_dfs(TABLE1_NAME)
+dfbtc = process_dfs(TABLE2_NAME)
+dfeth = process_dfs(TABLE3_NAME)
+dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5min')
 dfsolc = add_returns(dfsol)
 dfbtcc = add_returns(dfbtc)
 dfethc = add_returns(dfeth)
@@ -308,19 +314,9 @@ result = result.dropna()
 #print(result)
 #plot_converge(result)
 #plot_converge2(result, dfx)
-binshit(result)
+bin_summary(result)
 
 
 # convergence test
-'''result['y_future'] = np.where(result['residuals'] < 0, result['MaxFuture'], result['MinFuture'])
-X = sm.add_constant(result['residuals'])
-y = result['y_future']
-model = sm.OLS(y, X).fit()
-print(model.summary())
-print(model.params)
-print(model.bse)
-print(X.var())
-
-print(dfsolc['returns'].describe())'''
 
 

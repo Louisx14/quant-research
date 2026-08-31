@@ -1,17 +1,20 @@
-import re
-import time
-import math
+"""
+Close-to-next-open execution gap on hourly candles (2026).
+
+Measures the distribution of open[i+1] / close[i] - 1 across the table to set
+the slippage assumption used by the backtests: after the 2025 live
+deployment showed that "exit at the signal candle's close" is not
+executable, every backtest fills at the next open and this study calibrates
+how much that costs on average and in the tails.
+
+Original file: REGEX_003 slippage estimation.py
+"""
+
 import sqlite3
-import pyautogui
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from selenium import webdriver
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver 
-from selenium.webdriver.common.action_chains import ActionChains
 
 
 DB_DIR = Path("data")
@@ -19,8 +22,8 @@ DATABASE = "crypto.db"
 TABLENAME = "solana1H"
 PARAMETERS = [15, 25, 34, 43, 52, 61, 70, 75, 80]
 OFFSET = 100
-LENGHT = 10000
-BIAS_LENGHT = 400
+LENGTH = 10000
+BIAS_LENGTH = 400
 trade = None
 FEE = 0.075
 slippage = 0.05
@@ -56,7 +59,6 @@ df["diff_pct"] = (df["close"] - df["open_t_plus_1"]) / df["open_t_plus_1"]
 pct_diff_list = df["diff_pct"].tolist()
 
 def compute_range_and_mean_abs(data, percent):
-    import numpy as np
     
     if not (0 < percent < 100):
         raise ValueError("percent must be between 0 and 100")

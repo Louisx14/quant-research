@@ -1,3 +1,9 @@
+"""
+Rolling correlation of SOL and BTC hourly volatility over time (May 2026).
+
+Original file: correlation_try_vol_overtime.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

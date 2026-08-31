@@ -1,5 +1,15 @@
+"""
+Residual of the SOL~BTC regression as a convergence signal (Oct 2025).
+
+Regresses SOL 5-minute % change on BTC's (SOL = -0.0003 + 1.277 BTC,
+R^2 ~ 0.5 on the study data), synchronises the two tables to a continuous
+5-minute grid, and regresses the best move towards the fitted relation over
+the next 15 / 288 candles on the current residual.
+
+Original file: COR_002.PY
+"""
+
 import sqlite3
-import math
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
@@ -8,12 +18,12 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
 from scipy.stats import gaussian_kde
 from scipy.stats import linregress
 
-DB_FILE = "SQL001.db"
+DB_FILE = "data/SQL001.db"
 TABLE1_NAME = "Solana3"
 TABLE2_NAME = 'BTC'
 TABLE3_NAME = 'ETH'
 
-def proccess_dfs(table_name, db_file = DB_FILE):
+def process_dfs(table_name, db_file = DB_FILE):
     conn = sqlite3.connect(db_file)
     df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
     conn.close()
@@ -58,13 +68,13 @@ def synchronise_tables(df1, df2, df3=None):
     
     return df1_trimmed, df2_trimmed
 
-def synchronise_continuous(df1, df2, df3=None, freq='5T'):
+def synchronise_continuous(df1, df2, df3=None, freq='5min'):
     """
     Synchronizes 2 or 3 DataFrames by matching dates and ensuring perfect continuity.
     
     Parameters:
         df1, df2, df3: pandas DataFrames with 'date' column
-        freq: frequency string (default '5T' for 5 minutes)
+        freq: frequency string (default '5min')
     
     Returns:
         Trimmed, continuous DataFrames in the same order
@@ -345,7 +355,7 @@ def plot_regression3d(df1, df2, df3=None, label1='Asset 1', label2='Asset 2', la
 
         return metrics
 
-def time_series_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5, jumps=1, plot=False, dtxX=False):
+def time_series_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5, jumps=1, plot=False, dt_x=False):
     dtxx = []
     plt_indy = []
     #df1x, df2x = df1.copy(), df2.copy()
@@ -357,34 +367,34 @@ def time_series_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5
         if i < 0:
             df1x = df1x[:i]
             df2x = df2x[-i:]
-            #dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=plot)
+            #dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=plot)
             plot_density(df1x, df2x, label1=label1, label2=label2)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
         elif i > 0:
             df1x = df1x[i:]
             df2x = df2x[:-i]
-            #dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=plot)
+            #dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=plot)
             plot_density(df1x, df2x, label1=label1, label2=label2)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
         else:
             df1x, df2x = df1x, df2x
-            #dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=plot)
+            #dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=plot)
             plot_density(df1x, df2x, label1=label1, label2=label2)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
 
-    if dtxX:  
-        sl, inter, rval, ravals, pval,  sterr = [], [], [], [], [], [] 
+    if dt_x:  
+        sl, inter, rval, residual_values, pval,  sterr = [], [], [], [], [], [] 
         for i in dtxx:
             sl.append(i[1]['slope'])
             inter.append(i[1]['intercept'])
             rval.append(i[1]['r_value'])
-            ravals.append(i[1]['r_squared'])
+            residual_values.append(i[1]['r_squared'])
             pval.append(i[1]['p_value'])
             sterr.append(i[1]['std_err'])
 
@@ -397,7 +407,7 @@ def time_series_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5
         #plt.xticks(np.array(plt_indy), [i[0] for i in dtxx])
         plt.ylabel('r_value')
         plt.show()
-        plt.plot(plt_indy, ravals, label='r_squared')
+        plt.plot(plt_indy, residual_values, label='r_squared')
         #plt.xticks(np.array(plt_indy), [i[0] for i in dtxx])
         plt.ylabel('r_squared')
         plt.show()
@@ -412,7 +422,7 @@ def time_series_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5
 
     return dtxx
 # modify to make it one sided option
-def time_series2_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5, jumps=1, plot=False, dtxX=False, dTx='close'):
+def time_series2_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=5, jumps=1, plot=False, dt_x=False, dTx='close'):
     if jumps > 1:
         df1 = aggregate_candles(df1, jump=jumps)
         df2 = aggregate_candles(df2, jump=jumps)
@@ -432,37 +442,37 @@ def time_series2_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=
         if i < 0:
             df1x = df1x[:i]
             df2x = df2x[-i:]
-            dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
+            dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
             if plot:
                 plot_density(df1x, df2x, label1=label1, label2=label2, dTx=dTx)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
         elif i > 0:
             df1x = df1x[i:]
             df2x = df2x[:-i]
-            dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
+            dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
             if plot:
                 plot_density(df1x, df2x, label1=label1, label2=label2, dTx=dTx)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
         else:
             df1x, df2x = df1x, df2x
-            dtx = datagatheringandplot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
+            dtx = gather_and_plot(df1x, df2x, label1=label1, label2=label2, plot=False, dTx=dTx)
             if plot:
                 plot_density(df1x, df2x, label1=label1, label2=label2, dTx=dTx)
-            if dtxX:
+            if dt_x:
                 dtxx.append([f"{i}", dtx])
             #print(i, len(df1x), len(df2x))
 
-    if dtxX:  
-        sl, inter, rval, ravals, pval,  sterr = [], [], [], [], [], [] 
+    if dt_x:  
+        sl, inter, rval, residual_values, pval,  sterr = [], [], [], [], [], [] 
         for i in dtxx:
             sl.append(i[1]['slope'])
             inter.append(i[1]['intercept'])
             rval.append(i[1]['r_value'])
-            ravals.append(i[1]['r_squared'])
+            residual_values.append(i[1]['r_squared'])
             pval.append(i[1]['p_value'])
             sterr.append(i[1]['std_err'])
 
@@ -475,7 +485,7 @@ def time_series2_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=
         #plt.xticks(np.array(plt_indy), [i[0] for i in dtxx])
         plt.ylabel('r_value')
         plt.show()
-        plt.plot(plt_indy, ravals, label='r_squared')
+        plt.plot(plt_indy, residual_values, label='r_squared')
         #plt.xticks(np.array(plt_indy), [i[0] for i in dtxx])
         plt.ylabel('r_squared')
         plt.show()
@@ -490,7 +500,7 @@ def time_series2_plot2d(df1, df2, label1="asset1", label2="asset2", move_window=
 
     return dtxx
 
-def datagatheringandplot(df1, df2, label1='Asset 1', label2='Asset 2', plot = False, dTx = 'close'):
+def gather_and_plot(df1, df2, label1='Asset 1', label2='Asset 2', plot = False, dTx = 'close'):
     x = df1[dTx]
     y = df2[dTx]
     
@@ -619,7 +629,7 @@ def multivariate_regression(df_target, df1, df2, label_target='Target', label1='
             .merge(df2[['date', 'returns']], on='date')
             .rename(columns={'returns': f'returns_{label2}'})
         )
-        value_cols = [f'returns_target', f'returns_{label1}', f'returns_{label2}']
+        value_cols = ['returns_target', f'returns_{label1}', f'returns_{label2}']
 
     else:
         merged = (
@@ -628,7 +638,7 @@ def multivariate_regression(df_target, df1, df2, label_target='Target', label1='
             .merge(df2[['date', 'close']], on='date')
             .rename(columns={'close': f'close_{label2}'})
         )
-        value_cols = [f'close_target', f'close_{label1}', f'close_{label2}']
+        value_cols = ['close_target', f'close_{label1}', f'close_{label2}']
 
     # Drop rows with any NaN or inf values
     merged = merged.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
@@ -662,12 +672,12 @@ def multivariate_regression(df_target, df1, df2, label_target='Target', label1='
 
     return results, model
 
-dfsol = proccess_dfs(TABLE1_NAME)
-dfbtc = proccess_dfs(TABLE2_NAME)
-dfeth = proccess_dfs(TABLE3_NAME)
+dfsol = process_dfs(TABLE1_NAME)
+dfbtc = process_dfs(TABLE2_NAME)
+dfeth = process_dfs(TABLE3_NAME)
 
 
-dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5T')
+dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5min')
 
 dfsolc = add_returns(dfsol)
 dfbtcc = add_returns(dfbtc)
@@ -690,7 +700,7 @@ dfeth['ln_close'] = np.log2(dfeth['close'])
 #plot_density(dfsol, dfbtc, dfeth, label1='solana', label2='bitcoin', label3='ethereum', sample_size=10000)
 #res, mod = multivariate_regression(dfsolc, dfbtcc, dfethc, label_target='Solana', label1='Bitcoin', label2='Ethereum', returns=True)
 
-'''time_series2_plot2d(dfsolc, dfbtcc, label1='Solana', label2='Bitcoin', move_window=50, jumps=12, plot=False, dtxX=True, dTx ='returns')'''
+'''time_series2_plot2d(dfsolc, dfbtcc, label1='Solana', label2='Bitcoin', move_window=50, jumps=12, plot=False, dt_x=True, dTx ='returns')'''
 
 #dfsol, dfbtc, dfeth = synchronise_tables(dfsol, dfbtc, dfeth)
 #print(len(dfsol), len(dfbtc), len(dfeth))
@@ -698,7 +708,7 @@ dfeth['ln_close'] = np.log2(dfeth['close'])
 
 
 #plot_regression(dfsolc, dfbtcc, label1='Solana', label2='Bitcoin', dTx = 'returns')
-#time_series2_plot2d(dfsolc, dfbtcc, label1='Solana', label2='Bitcoin', move_window=10, jumps=3, plot=False, dtxX=True)
+#time_series2_plot2d(dfsolc, dfbtcc, label1='Solana', label2='Bitcoin', move_window=10, jumps=3, plot=False, dt_x=True)
 #plot_regression3d(dfsol, dfbtc, dfeth, label1='Solana', label2='Bitcoin', label3='Ethereum')
 #xxs = time_series_plot2d(dfsol, dfbtc, label1='Solana', label2='Bitcoin', move_window=5, jumps=20, plot=True)
 

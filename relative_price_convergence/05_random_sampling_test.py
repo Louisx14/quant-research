@@ -1,3 +1,18 @@
+"""
+Random-sampling test of the convergence regression (Nov 2025).
+
+Re-runs the residual -> forward-move regression on NUMBER_OF_SAMPLES random
+windows of SIZE_OF_SAMPLE candles and plots the distribution of slopes and
+R^2, to check that the full-sample coefficient is not driven by one regime.
+
+RUNTIME: the default NUMBER_OF_SAMPLES = 1,000,000 windows is a multi-hour run
+(the data load and synchronisation alone take a minute or two); progress is
+printed every iteration. Set NUMBER_OF_SAMPLES to 10,000 for a short run — the
+histograms in the README have the same shape at that size.
+
+Original file: COR_005 random sampling hypothesis test.py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -6,11 +21,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
-from scipy.stats import gaussian_kde
-from scipy.stats import linregress
 import random
 
-DB_FILE = "SQL001.db"
+DB_FILE = "data/SQL001.db"
 TABLE1_NAME = "Solana3"
 TABLE2_NAME = 'BTC'
 TABLE3_NAME = 'ETH'
@@ -18,7 +31,7 @@ NUMBER_OF_SAMPLES = 1000000
 SIZE_OF_SAMPLE = 5000
 LOOK_AHEAD_STEPS = 288
 
-def proccess_dfs(table_name, db_file = DB_FILE):
+def process_dfs(table_name, db_file = DB_FILE):
     conn = sqlite3.connect(db_file)
     df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
     conn.close()
@@ -63,13 +76,13 @@ def synchronise_tables(df1, df2, df3=None):
     
     return df1_trimmed, df2_trimmed
 
-def synchronise_continuous(df1, df2, df3=None, freq='5T'):
+def synchronise_continuous(df1, df2, df3=None, freq='5min'):
     """
     Synchronizes 2 or 3 DataFrames by matching dates and ensuring perfect continuity.
     
     Parameters:
         df1, df2, df3: pandas DataFrames with 'date' column
-        freq: frequency string (default '5T' for 5 minutes)
+        freq: frequency string (default '5min')
     
     Returns:
         Trimmed, continuous DataFrames in the same order
@@ -221,9 +234,9 @@ def plot_converge_with_regression(df):
     print(f"  MAE         : {mae:.5f}")
 
 def plot_convergex():
-    dfsol = proccess_dfs(TABLE1_NAME)
-    dfbtc = proccess_dfs(TABLE2_NAME)
-    dfsol, dfbtc = synchronise_continuous(dfsol, dfbtc, freq='5T')
+    dfsol = process_dfs(TABLE1_NAME)
+    dfbtc = process_dfs(TABLE2_NAME)
+    dfsol, dfbtc = synchronise_continuous(dfsol, dfbtc, freq='5min')
     dfsolc = add_returns(dfsol)
     dfbtcc = add_returns(dfbtc)
     X = dfbtcc['returns'].values
@@ -272,12 +285,12 @@ def corr_coef_columns(df, col1, col2, length):
     df = df.dropna()
     return df
 
-def binshit (df):
+def bin_summary (df):
     values = np.where(df["residuals"] < 0, abs(df["MaxFuture"]), abs(df["MinFuture"]))
     plt.hist(values, bins=100)
     plt.show()
 
-def sampling_adresses(dflen, size=SIZE_OF_SAMPLE):
+def sampling_addresses(dflen, size=SIZE_OF_SAMPLE):
     if dflen <= size:
         raise ValueError("Data length must be larger than sample size.")
     start = random.randint(0, dflen - size)
@@ -285,17 +298,17 @@ def sampling_adresses(dflen, size=SIZE_OF_SAMPLE):
     return start, end
 
 
-resultsXx = {
+sampling_results = {
     'slope' : [],
     'r2' : [],
     'pvalue' : [],
     't-stat' : [],
 }
 
-dfsol = proccess_dfs(TABLE1_NAME)
-dfbtc = proccess_dfs(TABLE2_NAME)
-dfeth = proccess_dfs(TABLE3_NAME)
-dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5T')
+dfsol = process_dfs(TABLE1_NAME)
+dfbtc = process_dfs(TABLE2_NAME)
+dfeth = process_dfs(TABLE3_NAME)
+dfsol, dfbtc, dfeth = synchronise_continuous(dfsol, dfbtc, dfeth, freq='5min')
 dfsolc = add_returns(dfsol)
 dfbtcc = add_returns(dfbtc)
 dfethc = add_returns(dfeth)
@@ -314,22 +327,22 @@ print("starting sampling ...")
 
 for i in range(NUMBER_OF_SAMPLES):
     rsx = result.copy()
-    st, ed = sampling_adresses(len(rsx))
+    st, ed = sampling_addresses(len(rsx))
     print(f"-- {100*i/NUMBER_OF_SAMPLES:.3f}% -- | iteration {i}, array slicing from {st} to {ed}")
     rsx = rsx.iloc[st:ed].reset_index(drop=True)
     X = rsx['residuals']
     y = rsx['y_future']
     X = sm.add_constant(X)
     model = sm.OLS(y, X).fit()
-    resultsXx['slope'] = np.append(resultsXx['slope'], model.params.iloc[1])
-    resultsXx['r2'] = np.append(resultsXx['r2'], model.rsquared)
-    resultsXx['pvalue'] = np.append(resultsXx['pvalue'], model.pvalues.iloc[1])
-    resultsXx['t-stat'] = np.append(resultsXx['t-stat'], model.tvalues.iloc[1])
+    sampling_results['slope'] = np.append(sampling_results['slope'], model.params.iloc[1])
+    sampling_results['r2'] = np.append(sampling_results['r2'], model.rsquared)
+    sampling_results['pvalue'] = np.append(sampling_results['pvalue'], model.pvalues.iloc[1])
+    sampling_results['t-stat'] = np.append(sampling_results['t-stat'], model.tvalues.iloc[1])
 
-#print(resultsXx)
+#print(sampling_results)
 
-for i in resultsXx.keys():
-    plt.hist(resultsXx[i], bins=50, density=False, edgecolor='black')
+for i in sampling_results.keys():
+    plt.hist(sampling_results[i], bins=50, density=False, edgecolor='black')
     plt.xlabel(i)
     plt.show()
 

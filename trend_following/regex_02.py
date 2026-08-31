@@ -1,13 +1,19 @@
-# building backtest engine to start research
+"""
+REGEX on hourly candles — forward-extrema regression and backtest scaffold (Feb–Mar 2026).
 
-# in this file we might start actually working onnstrategy research and testing.
+Same feature construction as regex_01, then `regress_forward_extrema_on_signal`
+regresses the best and worst return reachable in the next h candles on the
+weighted signal, to measure whether the signal carries information about the
+size of the coming move before any trading rule is written. The
+`logic`/`backtest` functions at the end are an unfinished scaffold.
 
-import re
-import time
-import math
+Original file: an intermediate REGEX_002-era version between REGEX_001.py and REGEX_004.py (the exact file was not kept in the archive)
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
@@ -17,8 +23,8 @@ DATABASE = "crypto.db"
 TABLENAME = "solana1H"
 PARAMETERS = [15, 25, 34, 43, 52, 61, 70, 75, 80]
 OFFSET = 100
-LENGHT = 10000
-BIAS_LENGHT = 400
+LENGTH = 10000
+BIAS_LENGTH = 400
 trade = None
 FEE = 0.075
 slippage = 0.002
@@ -31,7 +37,7 @@ conn = sqlite3.connect(db_path)
 df = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
-def regexdf(df, params):
+def regex_df(df, params):
     close_prices = df.iloc[:, 5]
 
     for window in params:
@@ -45,7 +51,7 @@ def regexdf(df, params):
 
     return df
 
-def plotx(df, sh=False):
+def plot_candles(df, sh=False):
 
     # Extract columns (change names if needed to match your DB schema)
     open_ = df.iloc[:, 2].astype(float)
@@ -80,7 +86,7 @@ def plotx(df, sh=False):
     if sh:
         plt.show()     
 
-def wregexdf(df, params):
+def weighted_regex_df(df, params):
     close_prices = df.iloc[:, 5].astype(float)
     weights = df.iloc[:, 6].astype(float)
 
@@ -129,41 +135,41 @@ def add_ave_column(df, params=PARAMETERS, factor=70, weighted=True, mode='xp', c
 
     return df
 
-def add_bias(df, lnght = BIAS_LENGHT, weighted=True) :
+def add_bias(df, length = BIAS_LENGTH, weighted=True) :
     close_prices  = df.iloc[:, 5]
     volumes = df.iloc[:, 6]
     
-    x = np.arange(lnght)
+    x = np.arange(length)
 
     def weighted_slope(y):
         w = volumes.loc[y.index].values
         return np.polyfit(x, y.values, 1, w=w)[0]
 
     if weighted == True :
-        df[f"bias_{lnght}"] = (
+        df[f"bias_{length}"] = (
             close_prices
-            .rolling(lnght)
+            .rolling(length)
             .apply(weighted_slope, raw=False)
             .round(8)) 
     else :
-        df[f"bias_{lnght}"] = (
+        df[f"bias_{length}"] = (
             close_prices
-            .rolling(lnght)
+            .rolling(length)
             .apply(lambda y: np.polyfit(x, y, 1)[0], raw=True)) 
         
     return df
 
-def plot_sigbias_conv(df, mint = 0, biasl = BIAS_LENGHT) :
+def plot_sigbias_conv(df, start_index = 0, bias_length = BIAS_LENGTH) :
     x = [p for p in range(len(df))]
     for i in range(len(df)) :
-        if df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGHT}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] > 0 :
-            plt.plot(x[i], mint, 'o', color='green')
-        elif df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGHT}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] < 0 :
-            plt.plot(x[i], mint, 'o', color='red')
+        if df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGTH}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] > 0 :
+            plt.plot(x[i], start_index, 'o', color='green')
+        elif df["sig"][i + OFFSET]*df[f'bias_{BIAS_LENGTH}'][i + OFFSET] > 0 and df['sig'][i + OFFSET] < 0 :
+            plt.plot(x[i], start_index, 'o', color='red')
 
 def setup_df(df, w = True) :
     if w == True :
-        df = wregexdf(df, PARAMETERS)
+        df = weighted_regex_df(df, PARAMETERS)
         df = add_ave_column(
             df,
             params = PARAMETERS,
@@ -173,7 +179,7 @@ def setup_df(df, w = True) :
             colname = 'wsig'
             )
     else :
-        df = regexdf(df, PARAMETERS)
+        df = regex_df(df, PARAMETERS)
         df = add_ave_column(
             df,
             params = PARAMETERS,
@@ -183,13 +189,12 @@ def setup_df(df, w = True) :
             colname = 'sig'
             )
     df = add_bias(df)
-    df = df.iloc[OFFSET:OFFSET+LENGHT]
+    df = df.iloc[OFFSET:OFFSET+LENGTH]
 
     return df
 
-def reg_I_shouldve_done_long_ago(df, h):
+def regress_forward_extrema_on_signal(df, h):
     import numpy as np
-    import pandas as pd
     import matplotlib.pyplot as plt
 
     if h <= 0:
@@ -266,7 +271,7 @@ def reg_I_shouldve_done_long_ago(df, h):
 
 df = setup_df(df).dropna()
 print(df)
-reg_I_shouldve_done_long_ago(df, h=48)
+regress_forward_extrema_on_signal(df, h=48)
 
 def trade_pnl(entry_price, exit_price, entry_time, exit_time, trade_side):
     pnl = 0

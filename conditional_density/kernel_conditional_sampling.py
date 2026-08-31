@@ -1,23 +1,38 @@
-# conditional distributions per bins of the other variable, with a smoothed kernel density estimate overlay to visualize the shape of the distribution in each bin. 
-# This can help identify patterns or relationships between the two variables across different ranges of the conditioning variable.
+"""
+Conditional distributions of the bearish excursion per bin of the bullish
+excursion, with a smoothed kernel density overlay per bin, and the coloured
+scatter used to judge how well the bins separate.
+
+Original file: smoothed_kernel_conditional_sampling_empirical.py
+"""
 
 import sqlite3
+
 import pandas as pd
+
 import numpy as np
+
 from pathlib import Path
+
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 DB_DIR = Path("data")
+
 DATABASE = "crypto.db"
+
 TABLENAME = "solana1H"
 
 db_path = DB_DIR / DATABASE
+
 conn = sqlite3.connect(db_path)
+
 df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
+
 conn.close()
 
 
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
+def compute_coming_vol(foresight=48, df=None, colname="coming_vol"):
     df = df.copy()
     colname_bearish = f"{colname}_br"
     colname_bullish = f"{colname}_bu"
@@ -38,7 +53,6 @@ def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
 
     df = df.dropna()
     return df
-
 
 def plot_conditional_bearish_grid(df_dist, n_bins=20):
 
@@ -90,10 +104,6 @@ def plot_conditional_bearish_grid(df_dist, n_bins=20):
     plt.show()
 
 
-# --- run ---
-df_dist = comp_comingvol(foresight=48, df=df_raw)
-plot_conditional_bearish_grid(df_dist, n_bins=20)
-
 def plot_primary_with_dividers(df_dist, n_bins=20, hist_bins=80):
     bu = df_dist["coming_vol_bu"].to_numpy()
 
@@ -126,132 +136,6 @@ def plot_primary_with_dividers(df_dist, n_bins=20, hist_bins=80):
     ax.grid(alpha=0.3)
     plt.tight_layout()
     plt.show()
-
-
-plot_primary_with_dividers(df_dist, n_bins=20)
-
-# plotting conditional means per bins of the other variable, with a smoothed kernel density estimate overlay to visualize the shape of the distribution in each bin. 
-# This can help identify patterns or relationships between the two variables across different ranges of the conditioning variable.
-
-"""import sqlite3
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
-
-DB_DIR = Path("data")
-DATABASE = "crypto.db"
-TABLENAME = "solana1H"
-
-db_path = DB_DIR / DATABASE
-conn = sqlite3.connect(db_path)
-df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
-conn.close()
-
-
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
-    df = df.copy()
-    colname_bearish = f"{colname}_br"
-    colname_bullish = f"{colname}_bu"
-    colname_theo_bu = f"{colname}_theo_bu"
-    colname_theo_br = f"{colname}_theo_br"
-
-    future_min = df.iloc[:, 5][::-1].rolling(foresight, min_periods=1).min()[::-1].shift(-1)
-    df[colname_bearish] = (future_min - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_min = df.iloc[:, 4][::-1].rolling(foresight, min_periods=1).min()[::-1].shift(-1)
-    df[colname_theo_br] = (future_min - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_max = df.iloc[:, 3][::-1].rolling(foresight, min_periods=1).max()[::-1].shift(-1)
-    df[colname_theo_bu] = (future_max - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_max = df.iloc[:, 5][::-1].rolling(foresight, min_periods=1).max()[::-1].shift(-1)
-    df[colname_bullish] = (future_max - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    df = df.dropna()
-    return df
-
-
-def plot_conditional_means(df_dist, n_bins=20, show_scatter=True):
-    br = df_dist["coming_vol_br"].to_numpy()
-    bu = df_dist["coming_vol_bu"].to_numpy()
-
-    # Quantile bins on bullish
-    bu_edges = np.quantile(bu, np.linspace(0, 1, n_bins + 1))
-    bu_edges[0]  -= 1e-9
-    bu_edges[-1] += 1e-9
-
-    bin_idx = np.digitize(bu, bu_edges) - 1
-    bin_idx = np.clip(bin_idx, 0, n_bins - 1)
-
-    bu_bin_means = np.array([bu[bin_idx == k].mean() for k in range(n_bins)])
-    br_bin_means = np.array([br[bin_idx == k].mean() for k in range(n_bins)])
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    if show_scatter:
-        ax.scatter(bu, br, s=4, alpha=0.15, color="gray", label="raw observations")
-
-    ax.plot(bu_bin_means, br_bin_means, "o-", color="crimson",
-            linewidth=2, markersize=7, label="E[bearish | bullish bin]")
-
-    ax.axhline(0, color="black", linewidth=0.5, alpha=0.5)
-    ax.axvline(0, color="black", linewidth=0.5, alpha=0.5)
-    ax.set_xlabel("mean bullish (per bin)")
-    ax.set_ylabel("mean bearish (per bin)")
-    ax.set_title(f"Conditional mean of bearish vs bullish, {n_bins} quantile bins")
-    ax.grid(alpha=0.3)
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
-
-
-# --- run ---
-df_dist = comp_comingvol(foresight=48, df=df_raw)
-plot_conditional_means(df_dist, n_bins=20, show_scatter=True)"""
-
-
-# same grpah but coloured scatters according to their belonging bins:
-
-
-"""import sqlite3
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-
-DB_DIR = Path("data")
-DATABASE = "crypto.db"
-TABLENAME = "solana1H"
-
-db_path = DB_DIR / DATABASE
-conn = sqlite3.connect(db_path)
-df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
-conn.close()
-
-
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
-    df = df.copy()
-    colname_bearish = f"{colname}_br"
-    colname_bullish = f"{colname}_bu"
-    colname_theo_bu = f"{colname}_theo_bu"
-    colname_theo_br = f"{colname}_theo_br"
-
-    future_min = df.iloc[:, 5][::-1].rolling(foresight, min_periods=1).min()[::-1].shift(-1)
-    df[colname_bearish] = (future_min - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_min = df.iloc[:, 4][::-1].rolling(foresight, min_periods=1).min()[::-1].shift(-1)
-    df[colname_theo_br] = (future_min - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_max = df.iloc[:, 3][::-1].rolling(foresight, min_periods=1).max()[::-1].shift(-1)
-    df[colname_theo_bu] = (future_max - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    future_max = df.iloc[:, 5][::-1].rolling(foresight, min_periods=1).max()[::-1].shift(-1)
-    df[colname_bullish] = (future_max - df.iloc[:, 5]) / df.iloc[:, 5]
-
-    df = df.dropna()
-    return df
 
 
 def plot_conditional_means(df_dist, n_bins=20, show_scatter=True):
@@ -310,5 +194,10 @@ def plot_conditional_means(df_dist, n_bins=20, show_scatter=True):
 
 
 # --- run ---
-df_dist = comp_comingvol(foresight=48, df=df_raw)
-plot_conditional_means(df_dist, n_bins=20, show_scatter=True)"""
+
+
+if __name__ == "__main__":
+    df_dist = compute_coming_vol(foresight=48, df=df_raw)
+    plot_conditional_bearish_grid(df_dist, n_bins=20)
+    plot_primary_with_dividers(df_dist, n_bins=20)
+    plot_conditional_means(df_dist, n_bins=20, show_scatter=True)

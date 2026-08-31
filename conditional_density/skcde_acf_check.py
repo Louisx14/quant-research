@@ -1,3 +1,13 @@
+"""
+ACF of raw and absolute log returns (May 2026).
+
+Used to choose the block length for the block bootstrap in
+`synthetic_markets/`: the absolute-return ACF shows volatility clustering out
+to ~125 candles (with a 24h session periodicity), so blocks are set to 250.
+
+Original file: SKCDE_ACFcheck.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

@@ -1,3 +1,11 @@
+"""
+Correlation between USDC/USDT trading volume and SOL / BTC realised
+volatility (Garman-Klass and Parkinson) on hourly candles, Pearson and
+Spearman, over several window lengths (May 2026).
+
+Original file: correlation_stablevol_coinsigma_measured.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

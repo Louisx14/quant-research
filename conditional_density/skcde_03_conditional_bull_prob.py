@@ -1,8 +1,15 @@
+"""
+SKCDE with a dynamic probability of a bullish outcome and a stop/target surface (May 2026).
+
+Original file: SKCDE_003(conditional_bull_prob).py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the 3d projection on older matplotlib)
 from matplotlib import cm
 
 # ============================================================
@@ -31,7 +38,7 @@ df_raw = pd.read_sql_query(f"SELECT * FROM {TABLENAME}", conn)
 conn.close()
 
 
-def comp_comingvol(foresight=48, df=None, colname="coming_vol"):
+def compute_coming_vol(foresight=48, df=None, colname="coming_vol"):
     df = df.copy()
     colname_bearish = f"{colname}_br"
     colname_bullish = f"{colname}_bu"
@@ -119,7 +126,7 @@ def compute_metrics(direction, bearish, bullish, sl, fee):
 # === RUN ====================================================
 # ============================================================
 
-df_dist = comp_comingvol(foresight=FORESIGHT, df=df_raw)
+df_dist = compute_coming_vol(foresight=FORESIGHT, df=df_raw)
 
 # 1. One shared sample table for moves (independent of p_bull)
 bullish_samples, bearish_samples, rng = sample_moves(

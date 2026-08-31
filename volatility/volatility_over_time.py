@@ -1,3 +1,9 @@
+"""
+Rolling annualised volatility of the hourly SOL series (May 2026).
+
+Original file: volatility over time.py
+"""
+
 import sqlite3
 import numpy as np
 import pandas as pd

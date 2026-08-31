@@ -1,10 +1,20 @@
+"""
+SOL vs BTC relative price — first look (Oct 2025).
+
+Plots SOL against BTC (raw prices and 5-minute % changes) and fits the
+linear relation; the % change regression is the "relative price level" the
+convergence hypothesis is built on.
+
+Original file: COR_001.py
+"""
+
 import sqlite3
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
-DB_FILE = "SQL001.db"
+DB_FILE = "data/SQL001.db"
 TABLE1_NAME = "Solana3"
 TABLE2_NAME = 'BTC'
 
