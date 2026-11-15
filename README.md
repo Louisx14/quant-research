@@ -11,14 +11,14 @@ top-to-bottom, plot as they go, and each starts with a docstring giving the
 question, the date, and the original file name. The point is the methodology and
 the results — including the negative ones, which are most of them.
 
-This is a curated export from a private working repository, single commit by design.
-
-## Studies, in the order they happened
+This is a curated export from a private working repository
 
 **In short:** 15+ strategies researched, two deployed live, none kept. The live
 reconciliation that retired the second one is in
 [market-data-pipeline](https://github.com/Louisx14/market-data-pipeline).
 Start with `conditional_density/` for the most developed study.
+
+## Studies, in the order they happened
 
 ### `regtrend/` — REGTREND execution study (Sept 2025)
 The REGTREND strategy (exp-weighted ensemble of OLS slopes over nine lookbacks,
