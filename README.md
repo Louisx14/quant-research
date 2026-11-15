@@ -15,6 +15,11 @@ This is a curated export from a private working repository, single commit by des
 
 ## Studies, in the order they happened
 
+**In short:** 15+ strategies researched, two deployed live, none kept. The live
+reconciliation that retired the second one is in
+[market-data-pipeline](https://github.com/Louisx14/market-data-pipeline).
+Start with `conditional_density/` for the most developed study.
+
 ### `regtrend/` — REGTREND execution study (Sept 2025)
 The REGTREND strategy (exp-weighted ensemble of OLS slopes over nine lookbacks,
 plus the slope and curvature of the slope-vs-lookback curve as entry features) is
